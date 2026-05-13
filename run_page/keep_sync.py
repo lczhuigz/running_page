@@ -31,6 +31,20 @@ KEEP2STRAVA = {
     "outdoorCycling": "Ride",
     "indoorRunning": "VirtualRun",
     "mountaineering": "Hiking",
+    # --- 新增运动类型 ---
+    "trailRunning": "TrailRun",
+    "indoorWalking": "Walk",
+    "indoorCycling": "VirtualRide",
+    "treadmill": "VirtualRun",
+    "swimming": "Swim",
+    "yoga": "Yoga",
+    "elliptical": "Elliptical",
+    "rowing": "Rowing",
+    "jumpRope": "JumpRope",
+    "strength": "WeightTraining",
+    "HIIT": "Workout",
+    "dance": "Workout",
+    "pilates": "Pilates",
 }
 KEEP2TCX = {
     "outdoorWalking": "Walking",
@@ -38,6 +52,25 @@ KEEP2TCX = {
     "outdoorCycling": "Biking",
     "indoorRunning": "Running",
     "mountaineering": "Hiking",
+    # --- 新增运动类型 ---
+    "trailRunning": "Running",
+    "indoorWalking": "Walking",
+    "indoorCycling": "Biking",
+    "treadmill": "Running",
+    "swimming": "Swimming",
+    "yoga": "Other",
+    "elliptical": "Other",
+    "rowing": "Other",
+    "jumpRope": "Other",
+    "strength": "Other",
+    "HIIT": "Other",
+    "dance": "Other",
+    "pilates": "Other",
+}
+# 有 GPS 轨迹数据的运动类型（用于 GPX/TCX 导出判断）
+KEEP_OUTDOOR_TYPES = {
+    "outdoorRunning", "outdoorWalking", "outdoorCycling",
+    "mountaineering", "trailRunning",
 }
 
 # need to test
@@ -154,20 +187,19 @@ def parse_raw_data_to_nametuple(
             if p_hr:
                 p["hr"] = p_hr
 
-        if (
-            run_data["dataType"].startswith("outdoor")
-            or run_data["dataType"] == "mountaineering"
-        ):
+        if run_data["dataType"] in KEEP_OUTDOOR_TYPES:
             if with_gpx:
                 gpx_data = parse_points_to_gpx(
-                    run_points_data_gpx, start_time, KEEP2STRAVA[run_data["dataType"]]
+                    run_points_data_gpx, start_time,
+                    KEEP2STRAVA.get(run_data.get("dataType", ""), "Run"),
                 )
                 elevation_gain = gpx_data.get_uphill_downhill().uphill
                 if str(keep_id) not in old_gpx_ids:
                     download_keep_gpx(gpx_data.to_xml(), str(keep_id))
             if with_tcx:
                 tcx_data = parse_points_to_tcx(
-                    run_data, run_points_data_gpx, KEEP2TCX[run_data["dataType"]]
+                    run_data, run_points_data_gpx,
+                    KEEP2TCX.get(run_data.get("dataType", ""), "Running"),
                 )
                 # elevation_gain = tcx_data.get_uphill_downhill().uphill
                 if str(keep_id) not in old_tcx_ids:
@@ -184,12 +216,18 @@ def parse_raw_data_to_nametuple(
     if not run_data["duration"]:
         print(f"ID {keep_id} has no total time just ignore please check")
         return
+    # 安全回退：遇到未知 dataType 时不再崩溃
+    keep_data_type = run_data.get("dataType", "")
+    strava_type = KEEP2STRAVA.get(keep_data_type, "Run")
+    if keep_data_type not in KEEP2STRAVA:
+        print(f"⚠️  Unknown keep dataType: '{keep_data_type}', fallback to 'Run'")
+
     d = {
         "id": int(keep_id),
-        "name": f"{KEEP2STRAVA[run_data['dataType']]} from keep",
+        "name": f"{strava_type} from keep",
         # future to support others workout now only for run
-        "type": f"{KEEP2STRAVA[(run_data['dataType'])]}",
-        "subtype": f"{KEEP2STRAVA[(run_data['dataType'])]}",
+        "type": strava_type,
+        "subtype": strava_type,
         "start_date": datetime.strftime(start_date, "%Y-%m-%d %H:%M:%S"),
         "end": datetime.strftime(end, "%Y-%m-%d %H:%M:%S"),
         "start_date_local": datetime.strftime(start_date_local, "%Y-%m-%d %H:%M:%S"),

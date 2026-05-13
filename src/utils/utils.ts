@@ -193,6 +193,7 @@ const intComma = (x = '') => {
 };
 
 const getActivitySport = (act: Activity): string => {
+  // Run 类型：按 subtype 区分
   if (act.type === 'Run') {
     if (act.subtype === 'generic') {
       const runDistance = act.distance / 1000;
@@ -206,16 +207,33 @@ const getActivitySport = (act: Activity): string => {
     else if (act.subtype === 'treadmill')
       return ACTIVITY_TYPES.RUN_TREADMILL_TITLE;
     else return ACTIVITY_TYPES.RUN_GENERIC_TITLE;
-  } else if (act.type === 'hiking') {
-    return ACTIVITY_TYPES.HIKING_TITLE;
-  } else if (act.type === 'cycling') {
+  }
+  // 骑行（Keep 返回 'Ride'，Strava 也用 'Ride'）
+  else if (act.type === 'cycling' || act.type === 'Ride' || act.type === 'VirtualRide') {
     return ACTIVITY_TYPES.CYCLING_TITLE;
-  } else if (act.type === 'walking') {
+  }
+  // 徒步
+  else if (act.type === 'hiking') {
+    return ACTIVITY_TYPES.HIKING_TITLE;
+  }
+  // 步行（Keep 返回 'Walk'）
+  else if (act.type === 'walking' || act.type === 'Walk') {
     return ACTIVITY_TYPES.WALKING_TITLE;
   }
-  // if act.type contains 'skiing'
+  // 游泳
+  else if (act.type === 'Swim') {
+    return ACTIVITY_TYPES.SWIMMING_TITLE;
+  }
+  // 滑雪
   else if (act.type.includes('skiing')) {
     return ACTIVITY_TYPES.SKIING_TITLE;
+  }
+  // 越野跑、室内跑等其他跑步类型
+  else if (act.type === 'TrailRun') {
+    return ACTIVITY_TYPES.RUN_TRAIL_TITLE;
+  }
+  else if (act.type === 'VirtualRun') {
+    return ACTIVITY_TYPES.RUN_TREADMILL_TITLE;
   }
   return '';
 };
@@ -233,7 +251,15 @@ const titleForRun = (run: Activity): string => {
       return `${city} ${activity_sport}`;
     }
   }
-  // 3. use time+length if location or type is not available
+  // 3. 非跑步运动直接返回运动类型名称，不套用跑步的距离/时间标题
+  const activity_sport = getActivitySport(run);
+  if (run.type !== 'Run') {
+    if (run.name && run.name !== '') {
+      return run.name;
+    }
+    return activity_sport || 'Workout';
+  }
+  // 4. 跑步运动才使用距离/时间标题
   const runDistance = run.distance / 1000;
   const runHour = +run.start_date_local.slice(11, 13);
   if (runDistance > 20 && runDistance < 40) {

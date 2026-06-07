@@ -43,7 +43,7 @@ const PRIVACY_MODE = false;
 //set to `false` if you want to make light off as default, only effect when `PRIVACY_MODE` = false
 const LIGHTS_ON = false;
 //set to `true` if you want to show the 'Elevation Gain' column
-const SHOW_ELEVATION_GAIN = false;
+const SHOW_ELEVATION_GAIN = true;
 // richer title for the activity types (like garmin style)
 const RICH_TITLE = false;
 
@@ -220,7 +220,7 @@ export const RUN_COLOR = '#47b8e0';
 export const RUN_TRAIL_COLOR = 'rgb(255,153,51)';
 export const CYCLING_COLOR = 'rgb(51,255,87)';
 export const HIKING_COLOR = 'rgb(151,51,255)';
-export const WALKING_COLOR = HIKING_COLOR;
+export const WALKING_COLOR = 'rgb(255,200,51)';
 export const SWIMMING_COLOR = 'rgb(255,51,51)';
 export const INDOOR_COLOR = '#8899aa';
 
@@ -308,6 +308,27 @@ export const getMapTileVendorStyles = (
 ): Record<string, string> | undefined => {
   const styles = MAP_TILE_STYLES[vendor as keyof typeof MAP_TILE_STYLES];
   return typeof styles === 'object' ? styles : undefined;
+};
+
+// Sport type filter configuration
+export const SPORT_TYPE_FILTERS = [
+  { key: 'all', label: IS_CHINESE ? '所有运动' : 'All' },
+  { key: 'Run', label: IS_CHINESE ? '跑步' : 'Run' },
+  { key: 'cycling', label: IS_CHINESE ? '骑行' : 'Cycling' },
+  { key: 'hiking', label: IS_CHINESE ? '徒步' : 'Hiking' },
+  { key: 'walking', label: IS_CHINESE ? '步行' : 'Walking' },
+  { key: 'Swim', label: IS_CHINESE ? '游泳' : 'Swimming' },
+];
+
+// Trend chart labels
+export const TREND_CHART_LABELS = {
+  DISTANCE: IS_CHINESE ? '距离 (km)' : 'Distance (km)',
+  PACE: IS_CHINESE ? '配速 (min/km)' : 'Pace (min/km)',
+  HEART_RATE: IS_CHINESE ? '心率 (bpm)' : 'Heart Rate (bpm)',
+  ELEVATION: IS_CHINESE ? '爬升 (m)' : 'Elevation (m)',
+  COUNT: IS_CHINESE ? '次数' : 'Count',
+  NO_DATA: IS_CHINESE ? '该筛选条件下暂无活动数据' : 'No activities for this filter',
+  MONTH: IS_CHINESE ? '月份' : 'Month',
 };
 
 // Configuration validation

@@ -213,7 +213,7 @@ const getActivitySport = (act: Activity): string => {
     return ACTIVITY_TYPES.CYCLING_TITLE;
   }
   // 徒步
-  else if (act.type === 'hiking') {
+  else if (act.type === 'hiking' || act.type === 'Hiking') {
     return ACTIVITY_TYPES.HIKING_TITLE;
   }
   // 步行（Keep 返回 'Walk'）
@@ -254,9 +254,6 @@ const titleForRun = (run: Activity): string => {
   // 3. 非跑步运动直接返回运动类型名称，不套用跑步的距离/时间标题
   const activity_sport = getActivitySport(run);
   if (run.type !== 'Run') {
-    if (run.name && run.name !== '') {
-      return run.name;
-    }
     return activity_sport || 'Workout';
   }
   // 4. 跑步运动才使用距离/时间标题
@@ -299,6 +296,16 @@ const filterCityRuns = (run: Activity, city: string) => {
 const filterTitleRuns = (run: Activity, title: string) =>
   titleForRun(run) === title;
 
+const filterSportRuns = (run: Activity, sportType: string) => {
+  if (sportType === 'all') return true;
+  if (sportType === 'Run') return run.type === 'Run';
+  if (sportType === 'cycling') return run.type === 'cycling' || run.type === 'Ride' || run.type === 'VirtualRide';
+  if (sportType === 'hiking') return run.type === 'hiking' || run.type === 'Hiking';
+  if (sportType === 'walking') return run.type === 'walking' || run.type === 'Walk';
+  if (sportType === 'Swim') return run.type === 'Swim';
+  return run.type === sportType;
+};
+
 const filterAndSortRuns = (
   activities: Activity[],
   item: string,
@@ -327,9 +334,11 @@ export {
   locationForRun,
   intComma,
   titleForRun,
+  getActivitySport,
   filterYearRuns,
   filterCityRuns,
   filterTitleRuns,
+  filterSportRuns,
   filterAndSortRuns,
   sortDateFunc,
   sortDateFuncReverse,

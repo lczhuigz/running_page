@@ -17,13 +17,15 @@ import YearsStat from '@/components/YearsStat';
 import useActivities from '@/hooks/useActivities';
 import getSiteMetadata from '@/hooks/useSiteMetadata';
 import { useInterval } from '@/hooks/useInterval';
-import { IS_CHINESE } from '@/utils/const';
+import { IS_CHINESE, SPORT_TYPE_FILTERS } from '@/utils/const';
+import TrendChart from '@/components/TrendChart';
 import {
   Activity,
   filterAndSortRuns,
   filterCityRuns,
   filterTitleRuns,
   filterYearRuns,
+  filterSportRuns,
   scrollToMap,
   sortDateFunc,
   titleForShow,
@@ -86,6 +88,7 @@ const Index = () => {
   const { activities, thisYear } = useActivities();
   const themeChangeCounter = useThemeChangeCounter();
   const [year, setYear] = useState(thisYear);
+  const [sportType, setSportType] = useState('all');
   const [runIndex, setRunIndex] = useState(-1);
   const [title, setTitle] = useState('');
   // Animation states for replacing intervalIdRef
@@ -116,10 +119,15 @@ const Index = () => {
     );
   }, [activities, currentFilter.item, currentFilter.func]);
 
+  const sportFilteredRuns = useMemo(() => {
+    if (sportType === 'all') return runs;
+    return runs.filter((run) => filterSportRuns(run, sportType));
+  }, [runs, sportType]);
+
   const geoData = useMemo(() => {
     void themeChangeCounter;
-    return geoJsonForRuns(runs);
-  }, [runs, themeChangeCounter]);
+    return geoJsonForRuns(sportFilteredRuns);
+  }, [sportFilteredRuns, themeChangeCounter]);
 
   // for auto zoom
   const bounds = useMemo(() => {
@@ -230,8 +238,8 @@ const Index = () => {
       const ids = new Set(runIds);
 
       const selectedRuns = !runIds.length
-        ? runs
-        : runs.filter((run: Activity) => ids.has(run.run_id));
+        ? sportFilteredRuns
+        : sportFilteredRuns.filter((run: Activity) => ids.has(run.run_id));
 
       if (!selectedRuns.length) {
         return;
@@ -246,7 +254,7 @@ const Index = () => {
       // Set runIndex for table highlighting when single run is selected
       if (runIds.length === 1) {
         const runId = runIds[0];
-        const runIdx = runs.findIndex((run) => run.run_id === runId);
+        const runIdx = sportFilteredRuns.findIndex((run) => run.run_id === runId);
         setRunIndex(runIdx);
       } else {
         setRunIndex(-1);
@@ -283,7 +291,7 @@ const Index = () => {
       setTitle(titleForShow(lastRun));
       scrollToMap();
     },
-    [runs]
+    [sportFilteredRuns]
   );
 
   // Auto locate activity when singleRunId is set and activities are loaded
@@ -339,10 +347,10 @@ const Index = () => {
   // Animate geoData when runs change
   useEffect(() => {
     if (singleRunId === null) {
-      const frameId = requestAnimationFrame(() => startAnimation(runs));
+      const frameId = requestAnimationFrame(() => startAnimation(sportFilteredRuns));
       return () => cancelAnimationFrame(frameId);
     }
-  }, [runs, startAnimation, singleRunId]);
+  }, [sportFilteredRuns, startAnimation, singleRunId]);
 
   useEffect(() => {
     if (year !== 'Total') {
@@ -367,7 +375,7 @@ const Index = () => {
           }
           if (selectedRunIdRef.current === runId) {
             selectedRunIdRef.current = null;
-            locateActivity(runs.map((r) => r.run_id));
+            locateActivity(sportFilteredRuns.map((r) => r.run_id));
           } else {
             selectedRunIdRef.current = runId;
             locateActivity([runId]);
@@ -381,7 +389,7 @@ const Index = () => {
           const [runDate] = titleEl.innerHTML.match(
             /\d{4}-\d{1,2}-\d{1,2}/
           ) || [`${+thisYear + 1}`];
-          const runIDsOnDate = runs
+          const runIDsOnDate = sportFilteredRuns
             .filter((r) => r.start_date_local.slice(0, 10) === runDate)
             .map((r) => r.run_id);
           if (!runIDsOnDate.length) {
@@ -389,7 +397,7 @@ const Index = () => {
           }
           if (selectedRunDateRef.current === runDate) {
             selectedRunDateRef.current = null;
-            locateActivity(runs.map((r) => r.run_id));
+            locateActivity(sportFilteredRuns.map((r) => r.run_id));
           } else {
             selectedRunDateRef.current = runDate;
             locateActivity(runIDsOnDate);
@@ -401,7 +409,7 @@ const Index = () => {
     return () => {
       svgStat && svgStat.removeEventListener('click', handleClick);
     };
-  }, [year, locateActivity, runs, thisYear]);
+  }, [year, locateActivity, sportFilteredRuns, thisYear]);
 
   const { theme } = useTheme();
 
@@ -425,6 +433,21 @@ const Index = () => {
         )}
       </div>
       <div className="w-full lg:w-2/3" id="map-container">
+        <div className="mb-4 flex flex-wrap justify-center gap-2">
+          {SPORT_TYPE_FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setSportType(key)}
+              className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                sportType === key
+                  ? 'bg-[var(--color-primary)] text-[var(--color-background)]'
+                  : 'border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-run-row-hover-background)]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <RunMap
           title={title}
           viewState={viewState}
@@ -437,12 +460,15 @@ const Index = () => {
         {year === 'Total' ? (
           <SVGStat />
         ) : (
-          <RunTable
-            runs={runs}
-            locateActivity={locateActivity}
-            runIndex={runIndex}
-            setRunIndex={setRunIndex}
-          />
+          <>
+            <TrendChart runs={sportFilteredRuns} />
+            <RunTable
+              runs={sportFilteredRuns}
+              locateActivity={locateActivity}
+              runIndex={runIndex}
+              setRunIndex={setRunIndex}
+            />
+          </>
         )}
       </div>
       {/* Enable Audiences in Vercel Analytics: https://vercel.com/docs/concepts/analytics/audiences/quickstart */}

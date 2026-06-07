@@ -108,3 +108,8 @@
 .runDate {
   color: var(--color-run-date);
 }
+
+.sportIndicator {
+  margin-right: 0.25rem;
+  font-size: 0.85rem;
+}

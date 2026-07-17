@@ -11,10 +11,10 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
-import { useThemeChangeCounter } from '@/hooks/useTheme';
-import { TREND_CHART_LABELS } from '@/utils/const';
-import { M_TO_DIST } from '@/utils/utils';
-import type { Activity } from '@/utils/utils';
+import { useThemeChangeCounter } from '@/themes/classic/hooks/useTheme';
+import { TREND_CHART_LABELS } from '@/themes/classic/utils/const';
+import { M_TO_DIST } from '@/themes/classic/utils/utils';
+import type { Activity } from '@/themes/classic/utils/utils';
 import styles from './style.module.css';
 
 interface TrendChartProps {

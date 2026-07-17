@@ -8,16 +8,16 @@ import {
 } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { Helmet } from 'react-helmet-async';
-import Layout from '@/components/Layout';
-import LocationStat from '@/components/LocationStat';
-import RunMap from '@/components/RunMap';
-import RunTable from '@/components/RunTable';
-import SVGStat from '@/components/SVGStat';
-import YearsStat from '@/components/YearsStat';
-import useActivities from '@/hooks/useActivities';
+import Layout from '../components/Layout';
+import LocationStat from '../components/LocationStat';
+import RunMap from '../components/RunMap';
+import RunTable from '../components/RunTable';
+import SVGStat from '../components/SVGStat';
+import YearsStat from '../components/YearsStat';
+import useActivities from '../hooks/useActivities';
 import getSiteMetadata from '@/hooks/useSiteMetadata';
 import { useInterval } from '@/hooks/useInterval';
-import { IS_CHINESE, SPORT_TYPE_FILTERS } from '@/utils/const';
+import { IS_CHINESE, SPORT_TYPE_FILTERS } from '../utils/const';
 import TrendChart from '@/components/TrendChart';
 import {
   Activity,

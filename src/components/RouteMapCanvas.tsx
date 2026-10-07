@@ -8,7 +8,7 @@ import { ReactComponent as EndSvg } from '@assets/end.svg';
 import { ReactComponent as StartSvg } from '@assets/start.svg';
 import type { Activity } from '../types';
 import { hasRoute, routeForActivity } from '../core/routeFallback';
-import { MAPBOX_TOKEN } from '../config';
+import { MAPBOX_TOKEN, MAPTILER_TOKEN, MAP_PROVIDER, MAP_STYLE_LIGHT, MAP_STYLE_DARK } from '../config';
 import { useLocale } from '../hooks/useLocale';
 import './RouteMap.css';
 
@@ -48,6 +48,8 @@ export function RouteMapCanvas({
   const fittedRef = useRef<unknown>(null);
     // Determine initial map provider based on config and available tokens
   const initialProvider = (() => {
+    if (MAP_PROVIDER === 'maptiler' && MAPTILER_TOKEN) return 'maptiler';
+    if (MAP_PROVIDER === 'mapbox' && MAPBOX_TOKEN) return 'mapbox';
     if (MAPBOX_TOKEN) return 'mapbox';
     return 'carto';
   })();
@@ -56,7 +58,23 @@ export function RouteMapCanvas({
     'loading'
   );
   const [retry, setRetry] = useState(0);
+  const MAPTILER_STYLES: Record<string, string> = {
+    'streets-light': 'https://api.maptiler.com/maps/streets-v2/style.json?key=',
+    'streets-dark': 'https://api.maptiler.com/maps/streets-v2-dark/style.json?key=',
+    'outdoor-light': 'https://api.maptiler.com/maps/outdoor-v2/style.json?key=',
+    'outdoor-dark': 'https://api.maptiler.com/maps/outdoor-v2-dark/style.json?key=',
+    'bright-light': 'https://api.maptiler.com/maps/bright-v2/style.json?key=',
+    'bright-dark': 'https://api.maptiler.com/maps/bright-v2-dark/style.json?key=',
+    'basic-light': 'https://api.maptiler.com/maps/basic-v2/style.json?key=',
+    'basic-dark': 'https://api.maptiler.com/maps/basic-v2-dark/style.json?key=',
+    hybrid: 'https://api.maptiler.com/maps/hybrid/style.json?key=',
+  };
   const style = (() => {
+    if (provider === 'maptiler' && MAPTILER_TOKEN) {
+      const styleName = dark === false ? MAP_STYLE_LIGHT : MAP_STYLE_DARK;
+      const templateUrl = MAPTILER_STYLES[styleName] || MAPTILER_STYLES['streets-light'];
+      return templateUrl + MAPTILER_TOKEN;
+    }
     if (provider === 'mapbox') {
       return 'mapbox://styles/mapbox/' + (dark === false ? 'light' : 'dark') + '-v11';
     }
@@ -274,8 +292,9 @@ export function RouteMapCanvas({
     let failed = false;
     const onError = (event: mapboxgl.ErrorEvent) => {
       const code = (event.error as Error & { status?: number }).status;
-      if (provider === 'mapbox' && (code === 401 || code === 403)) {
-        setProvider('carto');
+      if ((provider === 'mapbox' || provider === 'maptiler') && (code === 401 || code === 403)) {
+        if (provider === 'maptiler' && MAPBOX_TOKEN) setProvider('mapbox');
+        else setProvider('carto');
       } else {
         failed = true;
         setStatus('error');
@@ -289,11 +308,43 @@ export function RouteMapCanvas({
     map.on('idle', onIdle);
     map.once('styledataloading', onLoading);
     styleReadyRef.current = false;
-    map.setStyle(style, {
-      diff: false,
-      localFontFamily: undefined,
-      localIdeographFontFamily: 'sans-serif',
-    });
+    // MapTiler styles may contain maptiler:// sources incompatible with mapbox-gl.
+    // Fetch the style JSON, strip incompatible sources, then apply.
+    if (provider === 'maptiler' && style.startsWith('https://')) {
+      fetch(style)
+        .then((res) => res.json())
+        .then((styleJson) => {
+          if (styleJson.sources) {
+            for (const key of Object.keys(styleJson.sources)) {
+              const src = styleJson.sources[key];
+              if (src.url && src.url.startsWith('maptiler://')) {
+                delete styleJson.sources[key];
+                // Remove layers referencing this source
+                if (styleJson.layers) {
+                  styleJson.layers = styleJson.layers.filter(
+                    (l: { source?: string }) => l.source !== key
+                  );
+                }
+              }
+            }
+          }
+          map.setStyle(styleJson, {
+            diff: false,
+            localFontFamily: undefined,
+            localIdeographFontFamily: 'sans-serif',
+          });
+        })
+        .catch(() => {
+          setProvider('carto');
+          setRetry((v) => v + 1);
+        });
+    } else {
+      map.setStyle(style, {
+        diff: false,
+        localFontFamily: undefined,
+        localIdeographFontFamily: 'sans-serif',
+      });
+    }
     const timer = window.setTimeout(() => {
       if (!map.isStyleLoaded()) setStatus('error');
     }, 15000);
@@ -408,7 +459,11 @@ export function RouteMapCanvas({
               ? zh
                 ? '正在加载地图…'
                 : 'Loading map…'
-              : provider === 'carto'
+              : provider === 'maptiler'
+                ? zh
+                  ? '底图 · MapTiler'
+                  : 'Basemap · MapTiler'
+                : provider === 'carto'
                   ? zh
                     ? '备用底图 · CARTO'
                     : 'Alternative basemap · CARTO'
@@ -416,11 +471,13 @@ export function RouteMapCanvas({
                     ? '底图 · Mapbox'
                     : 'Basemap · Mapbox'}
         </span>
-        {(status === 'error' || (provider === 'carto' && !!MAPBOX_TOKEN)) && (
+        {(status === 'error' || (provider === 'carto' && (!!MAPBOX_TOKEN || !!MAPTILER_TOKEN))) && (
           <button
             className="route-map-action"
             onClick={() => {
-              if (MAPBOX_TOKEN) setProvider('mapbox');
+              if (MAPTILER_TOKEN) setProvider('maptiler');
+              else if (MAPBOX_TOKEN) setProvider('mapbox');
+              else if (MAPTILER_TOKEN) setProvider('maptiler');
               else if (MAPBOX_TOKEN) setProvider('mapbox');
               else setProvider('carto');
               setRetry((value) => value + 1);

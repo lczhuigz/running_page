@@ -119,13 +119,13 @@ export function RouteMapCanvas({
       clearMarkers();
       const startEl = createMarkerElement(StartSvg);
       markersRef.current.push(
-        new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: startEl })
+        new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: startEl, anchor: 'bottom' })
           .setLngLat(coords[0])
           .addTo(mapRef.current)
       );
       const endEl = createMarkerElement(EndSvg);
       markersRef.current.push(
-        new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: endEl })
+        new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: endEl, anchor: 'bottom' })
           .setLngLat(coords[coords.length - 1])
           .addTo(mapRef.current)
       );

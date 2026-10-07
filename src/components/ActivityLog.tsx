@@ -173,6 +173,7 @@ export function ActivityLog({
               <th className="pb-3 font-medium">{t('duration')}</th>
               <th className="pb-3 font-medium">{t('pace')}</th>
               <th className="pb-3 font-medium">{t('hr')}</th>
+              <th className="pb-3 font-medium">{t('elevation')}</th>
             </tr>
           </thead>
           <tbody>

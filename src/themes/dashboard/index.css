@@ -11,6 +11,7 @@
   --color-run: #f97316;
   --color-all: #a855f7;
   --color-accent: #a855f7;
+  --color-on-accent: #ffffff;
 }
 
 .dark {
@@ -19,6 +20,7 @@
   --color-border: #30363d;
   --color-text: #e6edf3;
   --color-muted: #8b949e;
+  --color-on-accent: #0d1117;
 }
 
 [data-filter='all'] {

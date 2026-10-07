@@ -1,18 +1,20 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import * as polyline from '@mapbox/polyline';
+import { ReactComponent as EndSvg } from '@assets/end.svg';
+import { ReactComponent as StartSvg } from '@assets/start.svg';
 import type { Activity } from '../types';
 import { getMapStyle, getMapAccessToken } from '../core/mapTiles';
-import {
-  SHOW_START_END_MARKERS,
-  START_MARKER_COLOR,
-  END_MARKER_COLOR,
-  DEFAULT_LOCALE,
-} from '../core/config';
+import { SHOW_START_END_MARKERS, DEFAULT_LOCALE } from '../core/config';
+import { hasRoute, routeForActivity } from '../core/routeFallback';
+import { useLocale } from '../hooks/useLocale';
 
 interface RouteMapProps {
   activities: Activity[];
+  allActivities?: Activity[];
   selectedActivity?: Activity | null;
   dark?: boolean;
   onClearSelection?: () => void;
@@ -87,22 +89,63 @@ function getActivityColor(type: string, distance?: number): string {
   return '#a855f7';
 }
 
+function decodeRouteCoordinates(activity: Activity): [number, number][] {
+  if (!activity.summary_polyline) return [];
+  try {
+    return polyline
+      .decode(activity.summary_polyline)
+      .map(([lat, lng]) => [lng, lat])
+      .filter(
+        ([lng, lat]) =>
+          Number.isFinite(lng) &&
+          Number.isFinite(lat) &&
+          Math.abs(lng) <= 180 &&
+          Math.abs(lat) <= 90
+      ) as [number, number][];
+  } catch {
+    return [];
+  }
+}
+
 export function RouteMap({
   activities,
+  allActivities = activities,
   selectedActivity,
   dark,
   onClearSelection,
 }: RouteMapProps) {
+  const { locale } = useLocale();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markerRootsRef = useRef<Root[]>([]);
   const animatorRef = useRef<RouteAnimator | null>(null);
   const style = getMapStyle(dark !== false);
+  const fallbackActivity =
+    selectedActivity && !hasRoute(selectedActivity)
+      ? routeForActivity(selectedActivity, allActivities)
+      : null;
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
+    markerRootsRef.current.forEach((root) => root.unmount());
+    markerRootsRef.current = [];
+  }, []);
+
+  const createMarkerElement = useCallback((marker: typeof StartSvg) => {
+    const element = document.createElement('div');
+    element.style.width = '28px';
+    element.style.height = '28px';
+    const root = createRoot(element);
+    root.render(
+      createElement(marker, {
+        style: { width: '100%', height: '100%', display: 'block' },
+      })
+    );
+    markerRootsRef.current.push(root);
+    return element;
   }, []);
 
   const addStartEndMarkers = useCallback(
@@ -110,29 +153,21 @@ export function RouteMap({
       if (!map.current || !SHOW_START_END_MARKERS || coords.length < 2) return;
       clearMarkers();
 
-      const startEl = document.createElement('div');
-      startEl.innerHTML =
-        '<svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0v20" stroke="#999" stroke-width="1.5"/><path d="M10 2l10 5-10 5V2z" fill="' +
-        START_MARKER_COLOR +
-        '" stroke="#aaa" stroke-width="0.5"/><circle cx="10" cy="24" r="3.5" fill="#999"/></svg>';
+      const startEl = createMarkerElement(StartSvg);
       markersRef.current.push(
         new mapboxgl.Marker({ element: startEl })
           .setLngLat(coords[0])
           .addTo(map.current)
       );
 
-      const endEl = document.createElement('div');
-      endEl.innerHTML =
-        '<svg width="20" height="28" viewBox="0 0 20 28"><path d="M10 0v20" stroke="#999" stroke-width="1.5"/><path d="M10 2l10 5-10 5V2z" fill="' +
-        END_MARKER_COLOR +
-        '" stroke="#dc2626" stroke-width="0.5"/><circle cx="10" cy="24" r="3.5" fill="#999"/></svg>';
+      const endEl = createMarkerElement(EndSvg);
       markersRef.current.push(
         new mapboxgl.Marker({ element: endEl })
           .setLngLat(coords[coords.length - 1])
           .addTo(map.current)
       );
     },
-    [clearMarkers]
+    [clearMarkers, createMarkerElement]
   );
 
   const updateRoutes = useCallback(() => {
@@ -159,14 +194,17 @@ export function RouteMap({
       }
     });
 
-    if (selectedActivity?.summary_polyline) {
-      const coords = polyline
-        .decode(selectedActivity.summary_polyline)
-        .map(([lat, lng]) => [lng, lat]) as [number, number][];
+    if (selectedActivity) {
+      const displayActivity = hasRoute(selectedActivity)
+        ? selectedActivity
+        : fallbackActivity;
+      if (!displayActivity) return;
+      const coords = decodeRouteCoordinates(displayActivity);
+      if (coords.length < 2) return;
 
       const color = getActivityColor(
-        selectedActivity.type,
-        selectedActivity.distance
+        displayActivity.type,
+        displayActivity.distance
       );
 
       // Fit bounds
@@ -234,15 +272,17 @@ export function RouteMap({
 
     // Show all routes
     const features = activities
-      .filter((a) => a.summary_polyline)
       .map((a) => ({
+        activity: a,
+        coordinates: decodeRouteCoordinates(a),
+      }))
+      .filter(({ coordinates }) => coordinates.length >= 2)
+      .map(({ activity, coordinates }) => ({
         type: 'Feature' as const,
-        properties: { type: a.type },
+        properties: { type: activity.type },
         geometry: {
           type: 'LineString' as const,
-          coordinates: polyline
-            .decode(a.summary_polyline!)
-            .map(([lat, lng]) => [lng, lat]),
+          coordinates,
         },
       }));
 
@@ -287,7 +327,13 @@ export function RouteMap({
         { padding: 30, maxZoom: 13 }
       );
     }
-  }, [activities, selectedActivity, clearMarkers, addStartEndMarkers]);
+  }, [
+    activities,
+    selectedActivity,
+    fallbackActivity,
+    clearMarkers,
+    addStartEndMarkers,
+  ]);
 
   // Initialize map
   useEffect(() => {
@@ -369,6 +415,16 @@ export function RouteMap({
           </svg>
           Overview
         </button>
+      )}
+      {fallbackActivity && (
+        <p
+          role="status"
+          className="absolute right-3 bottom-3 left-3 z-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]/95 px-3 py-2 text-xs text-[var(--color-muted)]"
+        >
+          {locale === 'zh'
+            ? `此活动没有可用的 GPS 轨迹，现显示之前最近一次有轨迹的活动：${fallbackActivity.name}（${fallbackActivity.start_date_local}）。`
+            : `This activity has no usable GPS route. Showing the most recent earlier mapped activity: ${fallbackActivity.name} (${fallbackActivity.start_date_local}).`}
+        </p>
       )}
       <div ref={mapContainer} className="h-full w-full" />
     </div>

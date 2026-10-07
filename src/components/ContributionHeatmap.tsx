@@ -583,7 +583,7 @@ export function ContributionHeatmap({
                           ? `${day.date}: ${day.distance} session(s)`
                           : day.domType === 'Training'
                             ? `${day.date}: ${Math.round(day.timeSecs / 60)}min`
-                            : `${day.date}: ${(day.activities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(1)} km`;
+                            : `${day.date}: ${(day.activities.reduce((s, a) => s + a.distance, 0) / 1000).toFixed(2)} km`;
                     return (
                       <div
                         key={di}

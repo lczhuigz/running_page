@@ -20,6 +20,7 @@ type SportType =
 interface TracksPageProps {
   activities: Activity[];
   filter: string;
+  dark?: boolean;
   onBack: () => void;
   onSelectActivity?: (a: Activity | null) => void;
 }
@@ -71,7 +72,7 @@ function TrackThumb({
     <div
       className={`group relative cursor-pointer rounded transition-all ${selected ? 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-bg)]' : ''}`}
       onClick={onClick}
-      title={`${activity.name} — ${(activity.distance / 1000).toFixed(1)} km`}
+      title={`${activity.name} — ${(activity.distance / 1000).toFixed(2)} km`}
     >
       <svg
         width={size}
@@ -254,7 +255,7 @@ function TrackMap({
 function getColor(a: Activity): string {
   if (a.type === 'Run' || a.type === 'VirtualRun' || a.type === 'TrailRun') {
     const km = a.distance / 1000;
-    return km >= 40 ? '#ef4444' : km >= 20 ? '#f97316' : '#f97316';
+    return km >= 20 ? '#ef4444' : '#f97316';
   }
   if (a.type === 'Ride' || a.type === 'VirtualRide') return '#3b82f6';
   if (a.type === 'Hike' || a.type === 'hiking' || a.type === 'Hiking')
@@ -268,6 +269,7 @@ function getColor(a: Activity): string {
 
 export function TracksPage({
   activities,
+  dark,
   onBack,
   onSelectActivity,
 }: TracksPageProps) {
@@ -611,7 +613,7 @@ export function TracksPage({
             <TrackMap
               activity={selectedActivity}
               activities={withPolyline}
-              dark
+              dark={dark}
             />
           </div>
         </div>

@@ -5,11 +5,13 @@ import { useLocale } from '../hooks/useLocale';
 
 interface CalendarWidgetProps {
   activities: Activity[];
+  selectedActivity?: Activity | null;
   onSelectActivity: (activity: Activity | null) => void;
 }
 
 export function CalendarWidget({
   activities,
+  selectedActivity,
   onSelectActivity,
 }: CalendarWidgetProps) {
   const { t } = useLocale();
@@ -17,6 +19,17 @@ export function CalendarWidget({
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const [previousSelection, setPreviousSelection] = useState(
+    selectedActivity?.run_id
+  );
+  if (previousSelection !== selectedActivity?.run_id) {
+    setPreviousSelection(selectedActivity?.run_id);
+    if (selectedActivity) {
+      const date = new Date(selectedActivity.start_date_local);
+      setViewYear(date.getFullYear());
+      setViewMonth(date.getMonth());
+    }
+  }
 
   const { days, monthDistance, monthCount } = useMemo(() => {
     const firstDaySun = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun
@@ -168,7 +181,7 @@ export function CalendarWidget({
                     {isHovered
                       ? d.day
                       : d.activities.length > 0
-                        ? `${(d.distance / 1000).toFixed(0)}k`
+                        ? `${(d.distance / 1000).toFixed(2)}k`
                         : d.day}
                   </span>
                 </>

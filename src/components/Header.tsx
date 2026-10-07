@@ -3,7 +3,7 @@ import { useLocale } from '../hooks/useLocale';
 import { AVATAR } from '../config';
 import siteMetadata from '../static/site-metadata';
 
-type Page = 'home' | 'tracks';
+type Page = 'home' | 'tracks' | 'summary';
 
 interface HeaderProps {
   dark: boolean;
@@ -19,6 +19,7 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
   const navItems: { label: string; page: Page }[] = [
     { label: t('home'), page: 'home' },
     { label: t('tracks'), page: 'tracks' },
+    { label: t('summary'), page: 'summary' },
   ];
 
   const siteTitle = siteMetadata.siteTitle;
@@ -32,7 +33,12 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
     <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg)]/70 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
         {/* Logo */}
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onNavigate('home')}
+          aria-label={locale === 'zh' ? '回到首页' : 'Go to home'}
+          className="flex cursor-pointer items-center gap-2 border-0 bg-transparent p-0"
+        >
           {AVATAR && (
             <img src={AVATAR} alt="logo" className="h-8 w-8 rounded-full" />
           )}
@@ -47,12 +53,13 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
               siteTitle
             )}
           </span>
-        </div>
+        </button>
 
         {/* Right nav */}
         <div className="flex items-center gap-6">
           {navItems.map((item) => (
             <button
+              aria-current={item.page === page ? 'page' : undefined}
               type="button"
               key={item.page}
               onClick={() => onNavigate(item.page)}
@@ -77,6 +84,24 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
             </a>
           ))}
           <button
+            aria-label={
+              locale === 'zh'
+                ? dark
+                  ? '切换浅色模式'
+                  : '切换深色模式'
+                : dark
+                  ? 'Switch to light mode'
+                  : 'Switch to dark mode'
+            }
+            title={
+              locale === 'zh'
+                ? dark
+                  ? '切换浅色模式'
+                  : '切换深色模式'
+                : dark
+                  ? 'Switch to light mode'
+                  : 'Switch to dark mode'
+            }
             onClick={toggleTheme}
             className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-card)]"
           >

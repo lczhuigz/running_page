@@ -9,6 +9,7 @@ import {
 import { Analytics } from '@vercel/analytics/react';
 import { Helmet } from 'react-helmet-async';
 import Layout from '../components/Layout';
+import { hasRoute, routeForActivity } from '../../../core/routeFallback';
 import LocationStat from '../components/LocationStat';
 import RunMap from '../components/RunMap';
 import RunTable from '../components/RunTable';
@@ -91,6 +92,9 @@ const Index = () => {
   const [sportType, setSportType] = useState('all');
   const [runIndex, setRunIndex] = useState(-1);
   const [title, setTitle] = useState('');
+  const [fallbackActivity, setFallbackActivity] = useState<Activity | null>(
+    null
+  );
   // Animation states for replacing intervalIdRef
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentAnimationIndex, setCurrentAnimationIndex] = useState(0);
@@ -194,6 +198,7 @@ const Index = () => {
       }
       setCurrentFilter({ item, func });
       setRunIndex(-1);
+      setFallbackActivity(null);
       setTitle(`${item} ${name} Running Heatmap`);
       // Reset single run state when changing filters
       clearRunHash();
@@ -251,6 +256,12 @@ const Index = () => {
         return;
       }
 
+      const displayRun =
+        runIds.length === 1 ? routeForActivity(lastRun, activities) : null;
+      setFallbackActivity(
+        runIds.length === 1 && !hasRoute(lastRun) ? displayRun : null
+      );
+
       // Set runIndex for table highlighting when single run is selected
       if (runIds.length === 1) {
         const runId = runIds[0];
@@ -272,7 +283,9 @@ const Index = () => {
       }
 
       // Create geoData for selected runs and calculate new bounds
-      const selectedGeoData = geoJsonForRuns(selectedRuns);
+      const selectedGeoData = geoJsonForRuns(
+        runIds.length === 1 ? (displayRun ? [displayRun] : []) : selectedRuns
+      );
       const selectedBounds = getBoundsForGeoData(selectedGeoData);
 
       // Stop any existing animation
@@ -293,7 +306,7 @@ const Index = () => {
       setTitle(titleForShow(lastRun));
       scrollToMap();
     },
-    [sportFilteredRuns]
+    [sportFilteredRuns, activities]
   );
 
   // Auto locate activity when singleRunId is set and activities are loaded
@@ -452,6 +465,13 @@ const Index = () => {
             </button>
           ))}
         </div>
+        {fallbackActivity && (
+          <p role="status" className="p-2 text-sm">
+            {IS_CHINESE
+              ? `此活动没有可用的 GPS 轨迹，现显示之前最近一次有轨迹的活动：${fallbackActivity.name}（${fallbackActivity.start_date_local}）。`
+              : `This activity has no usable GPS route. Showing the most recent earlier mapped activity: ${fallbackActivity.name} (${fallbackActivity.start_date_local}).`}
+          </p>
+        )}
         <RunMap
           title={title}
           viewState={viewState}

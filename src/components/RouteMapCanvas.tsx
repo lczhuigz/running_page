@@ -308,42 +308,26 @@ export function RouteMapCanvas({
     map.on('idle', onIdle);
     map.once('styledataloading', onLoading);
     styleReadyRef.current = false;
-    // MapTiler styles may contain maptiler:// sources incompatible with mapbox-gl.
-    // Fetch the style JSON, strip incompatible sources, then apply.
+    // MapTiler styles contain maptiler:// protocol sources incompatible
+    // with standard mapbox-gl. Always fetch JSON ourselves, strip bad sources.
     if (provider === 'maptiler' && style.startsWith('https://')) {
       fetch(style)
-        .then((res) => res.json())
-        .then((styleJson) => {
-          if (styleJson.sources) {
-            for (const key of Object.keys(styleJson.sources)) {
-              const src = styleJson.sources[key];
-              if (src.url && src.url.startsWith('maptiler://')) {
-                delete styleJson.sources[key];
-                // Remove layers referencing this source
-                if (styleJson.layers) {
-                  styleJson.layers = styleJson.layers.filter(
-                    (l: { source?: string }) => l.source !== key
-                  );
-                }
-              }
+        .then((r) => r.json())
+        .then((json) => {
+          if (json.sources) {
+            const bad = Object.keys(json.sources).filter(
+              (k) => json.sources[k].url && String(json.sources[k].url).startsWith('maptiler://')
+            );
+            for (const k of bad) delete json.sources[k];
+            if (json.layers && bad.length) {
+              json.layers = json.layers.filter((l: Record<string, string>) => !bad.includes(l.source));
             }
           }
-          map.setStyle(styleJson, {
-            diff: false,
-            localFontFamily: undefined,
-            localIdeographFontFamily: 'sans-serif',
-          });
+          map.setStyle(json, { diff: false, localFontFamily: undefined, localIdeographFontFamily: 'sans-serif' });
         })
-        .catch(() => {
-          setProvider('carto');
-          setRetry((v) => v + 1);
-        });
+        .catch(() => setStatus('error'));
     } else {
-      map.setStyle(style, {
-        diff: false,
-        localFontFamily: undefined,
-        localIdeographFontFamily: 'sans-serif',
-      });
+      map.setStyle(style, { diff: false, localFontFamily: undefined, localIdeographFontFamily: 'sans-serif' });
     }
     const timer = window.setTimeout(() => {
       if (!map.isStyleLoaded()) setStatus('error');

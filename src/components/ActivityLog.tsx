@@ -21,7 +21,7 @@ function typeIcon(type: string): string {
   const icons: Record<string, string> = {
     Run: '🏃',
   };
-  return icons[type] ?? '📌';
+  return icons[type] ?? '🏅';
 }
 
 export function ActivityLog({
@@ -179,7 +179,7 @@ export function ActivityLog({
             {!pageData.length && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="py-10 text-center text-[var(--color-muted)]"
                 >
                   {locale === 'zh'
@@ -235,6 +235,18 @@ export function ActivityLog({
                 </td>
                 <td className="py-4 text-[var(--color-muted)]">
                   {a.average_heartrate ? Math.round(a.average_heartrate) : '--'}
+                </td>
+                <td className="py-4 text-[var(--color-muted)]">
+                  {a.elevation_gain ? (
+                    <>
+                      <span className="font-mono">
+                        {Math.round(a.elevation_gain)}
+                      </span>
+                      <span className="ml-1 text-xs">m</span>
+                    </>
+                  ) : (
+                    '--'
+                  )}
                 </td>
               </tr>
             ))}

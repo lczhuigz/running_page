@@ -8,7 +8,7 @@ import { ReactComponent as EndSvg } from '@assets/end.svg';
 import { ReactComponent as StartSvg } from '@assets/start.svg';
 import type { Activity } from '../types';
 import { hasRoute, routeForActivity } from '../core/routeFallback';
-import { MAPBOX_TOKEN } from '../config';
+import { MAPBOX_TOKEN, MAPTILER_TOKEN, MAP_PROVIDER, MAP_STYLE_LIGHT, MAP_STYLE_DARK } from '../config';
 import { useLocale } from '../hooks/useLocale';
 import './RouteMap.css';
 
@@ -46,15 +46,40 @@ export function RouteMapCanvas({
   const styleReadyRef = useRef(false);
   const cameraRef = useRef<mapboxgl.CameraOptions | null>(null);
   const fittedRef = useRef<unknown>(null);
-  const [provider, setProvider] = useState(MAPBOX_TOKEN ? 'mapbox' : 'carto');
+    // Determine initial map provider based on config and available tokens
+  const initialProvider = (() => {
+    if (MAP_PROVIDER === 'maptiler' && MAPTILER_TOKEN) return 'maptiler';
+    if (MAP_PROVIDER === 'mapbox' && MAPBOX_TOKEN) return 'mapbox';
+    if (MAPBOX_TOKEN) return 'mapbox';
+    return 'carto';
+  })();
+  const [provider, setProvider] = useState(initialProvider);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
     'loading'
   );
   const [retry, setRetry] = useState(0);
-  const style =
-    provider === 'mapbox'
-      ? `mapbox://styles/mapbox/${dark === false ? 'light' : 'dark'}-v11`
-      : `https://basemaps.cartocdn.com/gl/${dark === false ? 'positron' : 'dark-matter'}-gl-style/style.json`;
+  const style = (() => {
+    const MAPTILER_STYLES: Record<string, string> = {
+      'streets-light': 'https://api.maptiler.com/maps/streets-v2/style.json?key=',
+      'streets-dark': 'https://api.maptiler.com/maps/streets-v2-dark/style.json?key=',
+      'outdoor-light': 'https://api.maptiler.com/maps/outdoor-v2/style.json?key=',
+      'outdoor-dark': 'https://api.maptiler.com/maps/outdoor-v2-dark/style.json?key=',
+      'bright-light': 'https://api.maptiler.com/maps/bright-v2/style.json?key=',
+      'bright-dark': 'https://api.maptiler.com/maps/bright-v2-dark/style.json?key=',
+      'basic-light': 'https://api.maptiler.com/maps/basic-v2/style.json?key=',
+      'basic-dark': 'https://api.maptiler.com/maps/basic-v2-dark/style.json?key=',
+      hybrid: 'https://api.maptiler.com/maps/hybrid/style.json?key=',
+    };
+    if (provider === 'maptiler' && MAPTILER_TOKEN) {
+      const styleName = dark === false ? MAP_STYLE_LIGHT : MAP_STYLE_DARK;
+      const templateUrl = MAPTILER_STYLES[styleName] || MAPTILER_STYLES['streets-light'];
+      return templateUrl + MAPTILER_TOKEN;
+    }
+    if (provider === 'mapbox') {
+      return 'mapbox://styles/mapbox/' + (dark === false ? 'light' : 'dark') + '-v11';
+    }
+    return 'https://basemaps.cartocdn.com/gl/' + (dark === false ? 'positron' : 'dark-matter') + '-gl-style/style.json';
+  })()
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach((marker) => marker.remove());
@@ -265,8 +290,9 @@ export function RouteMapCanvas({
     let failed = false;
     const onError = (event: mapboxgl.ErrorEvent) => {
       const code = (event.error as Error & { status?: number }).status;
-      if (provider === 'mapbox' && (code === 401 || code === 403)) {
-        setProvider('carto');
+      if ((provider === 'mapbox' || provider === 'maptiler') && (code === 401 || code === 403)) {
+        if (provider === 'maptiler' && MAPBOX_TOKEN) setProvider('mapbox');
+        else setProvider('carto');
       } else {
         failed = true;
         setStatus('error');
@@ -399,19 +425,25 @@ export function RouteMapCanvas({
               ? zh
                 ? '正在加载地图…'
                 : 'Loading map…'
-              : provider === 'carto'
+              : provider === 'maptiler'
                 ? zh
-                  ? '备用底图 · CARTO'
-                  : 'Alternative basemap · CARTO'
-                : zh
-                  ? '底图 · Mapbox'
-                  : 'Basemap · Mapbox'}
+                  ? '底图 · MapTiler'
+                  : 'Basemap · MapTiler'
+                : provider === 'carto'
+                  ? zh
+                    ? '备用底图 · CARTO'
+                    : 'Alternative basemap · CARTO'
+                  : zh
+                    ? '底图 · Mapbox'
+                    : 'Basemap · Mapbox'}
         </span>
-        {(status === 'error' || (provider === 'carto' && !!MAPBOX_TOKEN)) && (
+        {(status === 'error' || (provider === 'carto' && (!!MAPBOX_TOKEN || !!MAPTILER_TOKEN))) && (
           <button
             className="route-map-action"
             onClick={() => {
-              setProvider(MAPBOX_TOKEN ? 'mapbox' : 'carto');
+              if (MAPTILER_TOKEN) setProvider('maptiler');
+              else if (MAPBOX_TOKEN) setProvider('mapbox');
+              else setProvider('carto');
               setRetry((value) => value + 1);
             }}
           >

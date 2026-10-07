@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createElement } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import '@maptiler/sdk/style.css';
 import { Map as MapTilerMap, Marker as MapTilerMarker, LngLatBounds as MapTilerBounds, NavigationControl as MapTilerNav, FullscreenControl as MapTilerFullscreen, ScaleControl as MapTilerScale, config as maptilerConfig } from '@maptiler/sdk';
 import * as polyline from '@mapbox/polyline';
-import { ReactComponent as EndSvg } from '@assets/end.svg';
-import { ReactComponent as StartSvg } from '@assets/start.svg';
+import endSvg from '@assets/end.svg?raw';
+import startSvg from '@assets/start.svg?raw';
 import type { Activity } from '../types';
 import { hasRoute, routeForActivity } from '../core/routeFallback';
 import { MAPBOX_TOKEN, MAPTILER_TOKEN, MAP_PROVIDER, MAP_STYLE_LIGHT, MAP_STYLE_DARK } from '../config';
@@ -46,7 +45,6 @@ export function RouteMapCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const markerRootsRef = useRef<Root[]>([]);
   const styleReadyRef = useRef(false);
   const cameraRef = useRef<mapboxgl.CameraOptions | null>(null);
   const fittedRef = useRef<unknown>(null);
@@ -95,21 +93,19 @@ export function RouteMapCanvas({
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
-    markerRootsRef.current.forEach((root) => root.unmount());
-    markerRootsRef.current = [];
   }, []);
 
-  const createMarkerElement = useCallback((marker: typeof StartSvg) => {
+  const createMarkerElement = useCallback((svg: string) => {
     const element = document.createElement('div');
     element.style.width = '28px';
     element.style.height = '28px';
-    const root = createRoot(element);
-    root.render(
-      createElement(marker, {
-        style: { width: '100%', height: '100%', display: 'block' },
-      })
-    );
-    markerRootsRef.current.push(root);
+    element.innerHTML = svg;
+    const svgEl = element.querySelector('svg');
+    if (svgEl) {
+      svgEl.setAttribute('width', '100%');
+      svgEl.setAttribute('height', '100%');
+      svgEl.style.display = 'block';
+    }
     return element;
   }, []);
 
@@ -117,13 +113,13 @@ export function RouteMapCanvas({
     (coords: [number, number][]) => {
       if (!mapRef.current || coords.length < 2) return;
       clearMarkers();
-      const startEl = createMarkerElement(StartSvg);
+      const startEl = createMarkerElement(startSvg);
       markersRef.current.push(
         new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: startEl, anchor: 'bottom' })
           .setLngLat(coords[0])
           .addTo(mapRef.current)
       );
-      const endEl = createMarkerElement(EndSvg);
+      const endEl = createMarkerElement(endSvg);
       markersRef.current.push(
         new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: endEl, anchor: 'bottom' })
           .setLngLat(coords[coords.length - 1])

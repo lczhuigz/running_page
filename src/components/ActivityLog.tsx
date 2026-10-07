@@ -212,28 +212,28 @@ export function ActivityLog({
                     : 'hover:bg-[var(--color-bg)]'
                 }`}
               >
-                <td className="py-3 text-[var(--color-muted)]">
+                <td className="py-4 text-[var(--color-muted)]">
                   {a.start_date_local.slice(0, 16).replace('T', ' ')}
                 </td>
-                <td className="py-3">
+                <td className="py-4">
                   <span className="text-[var(--color-muted)]">
                     {typeIcon(a.type)} {a.type}
                   </span>
                 </td>
-                <td className="py-3">{a.name || t('run')}</td>
-                <td className="py-3 font-mono font-medium">
+                <td className="py-4">{a.name || t('run')}</td>
+                <td className="py-4 font-mono font-medium">
                   {(a.distance / 1000).toFixed(2)}
                   <span className="ml-1 text-xs font-normal text-[var(--color-muted)]">
                     km
                   </span>
                 </td>
-                <td className="py-3 text-[var(--color-muted)]">
+                <td className="py-4 text-[var(--color-muted)]">
                   {formatDuration(a.moving_time)}
                 </td>
-                <td className="py-3 text-[var(--color-muted)]">
+                <td className="py-4 text-[var(--color-muted)]">
                   {formatPace(a.average_speed)}
                 </td>
-                <td className="py-3 text-[var(--color-muted)]">
+                <td className="py-4 text-[var(--color-muted)]">
                   {a.average_heartrate ? Math.round(a.average_heartrate) : '--'}
                 </td>
               </tr>

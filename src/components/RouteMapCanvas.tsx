@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { MapMLGL as MapTilerMap, Marker as MapTilerMarker, LngLatBounds as MapTilerBounds, NavigationControl as MapTilerNav, FullscreenControl as MapTilerFullscreen, ScaleControl as MapTilerScale, config as maptilerConfig } from '@maptiler/sdk';
 import * as polyline from '@mapbox/polyline';
 import { ReactComponent as EndSvg } from '@assets/end.svg';
 import { ReactComponent as StartSvg } from '@assets/start.svg';
@@ -19,6 +20,9 @@ export interface RouteMapProps {
   dark?: boolean;
   onClearSelection?: () => void;
 }
+
+// Register the MapTiler API key globally so maptiler:// protocol resolves.
+maptilerConfig.apiKey = MAPTILER_TOKEN;
 
 const routeCache = new WeakMap<
   Activity,
@@ -58,8 +62,7 @@ export function RouteMapCanvas({
     'loading'
   );
   const [retry, setRetry] = useState(0);
-  // MapTiler provides raster tiles that are fully compatible with mapbox-gl.
-  // Vector styles use maptiler:// protocol which standard mapbox-gl cannot parse.
+  // MapTiler vector styles use maptiler:// protocol, handled by @maptiler/sdk.
   const MAPTILER_STYLE_IDS: Record<string, string> = {
     'streets-light': 'streets-v2',
     'streets-dark': 'streets-v2-dark',
@@ -81,27 +84,7 @@ export function RouteMapCanvas({
     if (provider === 'maptiler' && MAPTILER_TOKEN) {
       const styleName = dark === false ? MAP_STYLE_LIGHT : MAP_STYLE_DARK;
       const styleId = MAPTILER_STYLE_IDS[styleName] || 'streets-v2';
-      return {
-        version: 8,
-        name: 'maptiler-raster',
-        sources: {
-          maptiler: {
-            type: 'raster',
-            tiles: [
-              `https://api.maptiler.com/maps/${styleId}/256/{z}/{x}/{y}.png?key=${MAPTILER_TOKEN}`,
-            ],
-            tileSize: 256,
-            attribution: '\u00a9 MapTiler \u00a9 OpenStreetMap contributors',
-          },
-        },
-        layers: [
-          {
-            id: 'maptiler-raster',
-            type: 'raster',
-            source: 'maptiler',
-          },
-        ],
-      };
+      return `maptiler://${styleId}`;
     }
     if (provider === 'mapbox') {
       return 'mapbox://styles/mapbox/' + (dark === false ? 'light' : 'dark') + '-v11';
@@ -136,13 +119,13 @@ export function RouteMapCanvas({
       clearMarkers();
       const startEl = createMarkerElement(StartSvg);
       markersRef.current.push(
-        new mapboxgl.Marker({ element: startEl })
+        new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: startEl })
           .setLngLat(coords[0])
           .addTo(mapRef.current)
       );
       const endEl = createMarkerElement(EndSvg);
       markersRef.current.push(
-        new mapboxgl.Marker({ element: endEl })
+        new (provider === 'maptiler' ? MapTilerMarker : mapboxgl.Marker)({ element: endEl })
           .setLngLat(coords[coords.length - 1])
           .addTo(mapRef.current)
       );
@@ -198,7 +181,7 @@ export function RouteMapCanvas({
   }, [activities, selectedActivity, displayActivity]);
 
   const routeBounds = useMemo(() => {
-    const bounds = new mapboxgl.LngLatBounds();
+    const bounds = new (provider === 'maptiler' ? MapTilerBounds : mapboxgl.LngLatBounds)();
     for (const route of routes) {
       for (const coord of route.geometry.coordinates)
         bounds.extend(coord as [number, number]);
@@ -268,7 +251,8 @@ export function RouteMapCanvas({
     if (!containerRef.current || !panelRef.current) return;
     if (mapRef.current) return;
     mapboxgl.accessToken = MAPBOX_TOKEN;
-    const map = new mapboxgl.Map({
+    const MapClass = provider === 'maptiler' ? MapTilerMap : mapboxgl.Map;
+    const map = new MapClass({
       container: containerRef.current,
       accessToken: MAPBOX_TOKEN,
       language: zh ? 'zh-Hans' : 'en',
@@ -289,13 +273,13 @@ export function RouteMapCanvas({
         : {},
     });
     mapRef.current = map;
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.addControl(new (provider === 'maptiler' ? MapTilerNav : mapboxgl.NavigationControl)(), 'top-right');
     map.addControl(
-      new mapboxgl.FullscreenControl({ container: panelRef.current }),
+      new (provider === 'maptiler' ? MapTilerFullscreen : mapboxgl.FullscreenControl)({ container: panelRef.current }),
       'top-right'
     );
     map.addControl(
-      new mapboxgl.ScaleControl({ unit: 'metric', maxWidth: 90 }),
+      new (provider === 'maptiler' ? MapTilerScale : mapboxgl.ScaleControl)({ unit: 'metric', maxWidth: 90 }),
       'bottom-left'
     );
     const observer = new ResizeObserver(() => map.resize());

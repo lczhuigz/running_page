@@ -3,7 +3,7 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { MapMLGL as MapTilerMap, Marker as MapTilerMarker, LngLatBounds as MapTilerBounds, NavigationControl as MapTilerNav, FullscreenControl as MapTilerFullscreen, ScaleControl as MapTilerScale, config as maptilerConfig } from '@maptiler/sdk';
+import { Map as MapTilerMap, Marker as MapTilerMarker, LngLatBounds as MapTilerBounds, NavigationControl as MapTilerNav, FullscreenControl as MapTilerFullscreen, ScaleControl as MapTilerScale, config as maptilerConfig } from '@maptiler/sdk';
 import * as polyline from '@mapbox/polyline';
 import { ReactComponent as EndSvg } from '@assets/end.svg';
 import { ReactComponent as StartSvg } from '@assets/start.svg';

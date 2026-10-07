@@ -48,8 +48,6 @@ export function RouteMapCanvas({
   const fittedRef = useRef<unknown>(null);
     // Determine initial map provider based on config and available tokens
   const initialProvider = (() => {
-    if (MAP_PROVIDER === 'maptiler' && MAPTILER_TOKEN) return 'maptiler';
-    if (MAP_PROVIDER === 'mapbox' && MAPBOX_TOKEN) return 'mapbox';
     if (MAPBOX_TOKEN) return 'mapbox';
     return 'carto';
   })();

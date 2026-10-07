@@ -477,7 +477,7 @@ export function TracksPage({
               )}
               <button
                 onClick={() => setSelectedYear(null)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${selectedYear === null ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${selectedYear === null ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
               >
                 {locale === 'zh' ? '全部' : 'All'}
               </button>
@@ -487,7 +487,7 @@ export function TracksPage({
                   onClick={() =>
                     setSelectedYear(selectedYear === yr ? null : yr)
                   }
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${selectedYear === yr ? 'bg-[var(--color-accent)] text-white' : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${selectedYear === yr ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
                 >
                   {yr}
                 </button>
@@ -507,7 +507,7 @@ export function TracksPage({
               <div className="ml-auto flex items-center gap-1.5">
                 <button
                   onClick={() => setSportFilter(null)}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${sportFilter === null ? 'border-transparent bg-[var(--color-accent)] text-white' : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${sportFilter === null ? 'border-transparent bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
                 >
                   {locale === 'zh' ? '全部' : 'All'}
                 </button>
@@ -519,7 +519,7 @@ export function TracksPage({
                       onClick={() =>
                         setSportFilter(sportFilter === value ? null : value)
                       }
-                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${sportFilter === value ? 'border-transparent text-white' : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${sportFilter === value ? 'border-transparent text-[var(--color-on-accent)]' : 'border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
                       style={
                         sportFilter === value ? { backgroundColor: color } : {}
                       }

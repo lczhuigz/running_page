@@ -21,7 +21,7 @@ function typeIcon(type: string): string {
   const icons: Record<string, string> = {
     Run: '🏃',
   };
-  return icons[type] ?? '🏅';
+  return icons[type] ?? '📌';
 }
 
 export function ActivityLog({
@@ -32,7 +32,7 @@ export function ActivityLog({
   selectedActivity,
   onSelectActivity,
 }: ActivityLogProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [page, setPage] = useState(0);
   const [distFilter, setDistFilter] = useState<DistanceFilter>('all');
 
@@ -79,36 +79,48 @@ export function ActivityLog({
   const pageData = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
+    <div
+      aria-label={t('activityLog')}
+      role="region"
+      className="activity-log-card rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-6"
+    >
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">{t('activityLog')}</h2>
         <span className="text-sm text-[var(--color-muted)]">
-          {t('showing')} {page * PAGE_SIZE + 1}-
+          {t('showing')} {sorted.length ? page * PAGE_SIZE + 1 : 0}-
           {Math.min((page + 1) * PAGE_SIZE, sorted.length)} {t('of')}{' '}
           {sorted.length}
         </span>
       </div>
 
       {/* Year tabs */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div
+        role="group"
+        aria-label={locale === 'zh' ? '活动年份' : 'Activity year'}
+        className="mb-3 flex flex-wrap items-center gap-2"
+      >
         <button
+          aria-pressed={year === null}
           onClick={() => {
+            onSelectActivity?.(null);
             setYear(null);
             setPage(0);
           }}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${year === null ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${year === null ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
         >
-          All
+          {t('all')}
         </button>
         {years.map((y) => (
           <button
             key={y}
+            aria-pressed={year === y}
             onClick={() => {
+              onSelectActivity?.(null);
               setYear(y);
               setPage(0);
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${year === y ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${year === y ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
           >
             {y}
           </button>
@@ -116,7 +128,11 @@ export function ActivityLog({
       </div>
 
       {/* Distance filter */}
-      <div className="mb-5 flex items-center gap-2">
+      <div
+        role="group"
+        aria-label={locale === 'zh' ? '距离筛选' : 'Distance filter'}
+        className="mb-5 flex items-center gap-2"
+      >
         {(
           [
             ['all', t('all')],
@@ -127,20 +143,27 @@ export function ActivityLog({
         ).map(([val, label]) => (
           <button
             key={val}
+            aria-pressed={distFilter === val}
             onClick={() => {
+              onSelectActivity?.(null);
               setDistFilter(val);
               setPage(0);
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${distFilter === val ? 'bg-[var(--color-accent)] text-white' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+            className={`rounded-full px-3 py-1 text-xs font-medium ${distFilter === val ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
           >
             {label}
           </button>
         ))}
       </div>
 
+      <p className="table-scroll-hint mb-2 text-xs text-[var(--color-muted)]">
+        {locale === 'zh'
+          ? '左右滑动查看更多数据，点击记录查看路线'
+          : 'Swipe for more details; select a run to view its route'}
+      </p>
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-muted)]">
               <th className="pb-3 font-medium">{t('date')}</th>
@@ -150,13 +173,34 @@ export function ActivityLog({
               <th className="pb-3 font-medium">{t('duration')}</th>
               <th className="pb-3 font-medium">{t('pace')}</th>
               <th className="pb-3 font-medium">{t('hr')}</th>
-              <th className="pb-3 font-medium">{t('elevation')}</th>
             </tr>
           </thead>
           <tbody>
+            {!pageData.length && (
+              <tr>
+                <td
+                  colSpan={7}
+                  className="py-10 text-center text-[var(--color-muted)]"
+                >
+                  {locale === 'zh'
+                    ? '没有符合筛选条件的活动'
+                    : 'No activities match these filters'}
+                </td>
+              </tr>
+            )}
             {pageData.map((a) => (
               <tr
                 key={a.run_id}
+                tabIndex={onSelectActivity ? 0 : undefined}
+                aria-selected={selectedActivity?.run_id === a.run_id}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onSelectActivity?.(
+                      selectedActivity?.run_id === a.run_id ? null : a
+                    );
+                  }
+                }}
                 onClick={() =>
                   onSelectActivity?.(
                     selectedActivity?.run_id === a.run_id ? null : a
@@ -192,18 +236,6 @@ export function ActivityLog({
                 <td className="py-3 text-[var(--color-muted)]">
                   {a.average_heartrate ? Math.round(a.average_heartrate) : '--'}
                 </td>
-                <td className="py-3 text-[var(--color-muted)]">
-                  {a.elevation_gain ? (
-                    <>
-                      <span className="font-mono">
-                        {Math.round(a.elevation_gain)}
-                      </span>
-                      <span className="ml-1 text-xs">m</span>
-                    </>
-                  ) : (
-                    '--'
-                  )}
-                </td>
               </tr>
             ))}
           </tbody>
@@ -213,6 +245,9 @@ export function ActivityLog({
       {/* Pagination */}
       <div className="mt-4 flex items-center justify-between border-t border-[var(--color-border)] pt-4">
         <button
+          aria-label={
+            locale === 'zh' ? '上一页活动' : 'Previous activities page'
+          }
           onClick={() => setPage((p) => Math.max(0, p - 1))}
           disabled={page === 0}
           className="text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)] disabled:opacity-30"
@@ -220,9 +255,11 @@ export function ActivityLog({
           ←
         </button>
         <span className="text-sm text-[var(--color-muted)]">
-          {t('page')} {page + 1} {t('pageOf')} {totalPages} {t('pages')}
+          {t('page')} {totalPages ? page + 1 : 0} {t('pageOf')} {totalPages}{' '}
+          {t('pages')}
         </span>
         <button
+          aria-label={locale === 'zh' ? '下一页活动' : 'Next activities page'}
           onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
           disabled={page >= totalPages - 1}
           className="text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)] disabled:opacity-30"

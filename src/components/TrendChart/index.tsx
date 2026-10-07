@@ -199,7 +199,7 @@ const TrendChart = ({ runs }: TrendChartProps) => {
         </button>
       </div>
       <div className={styles.chartWrapper}>
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={200}>
           <ComposedChart
             data={monthlyData}
             margin={{ top: 10, right: 10, left: 0, bottom: 5 }}

@@ -58,22 +58,50 @@ export function RouteMapCanvas({
     'loading'
   );
   const [retry, setRetry] = useState(0);
-  const MAPTILER_STYLES: Record<string, string> = {
-    'streets-light': 'https://api.maptiler.com/maps/streets-v2/style.json?key=',
-    'streets-dark': 'https://api.maptiler.com/maps/streets-v2-dark/style.json?key=',
-    'outdoor-light': 'https://api.maptiler.com/maps/outdoor-v2/style.json?key=',
-    'outdoor-dark': 'https://api.maptiler.com/maps/outdoor-v2-dark/style.json?key=',
-    'bright-light': 'https://api.maptiler.com/maps/bright-v2/style.json?key=',
-    'bright-dark': 'https://api.maptiler.com/maps/bright-v2-dark/style.json?key=',
-    'basic-light': 'https://api.maptiler.com/maps/basic-v2/style.json?key=',
-    'basic-dark': 'https://api.maptiler.com/maps/basic-v2-dark/style.json?key=',
-    hybrid: 'https://api.maptiler.com/maps/hybrid/style.json?key=',
+  // MapTiler provides raster tiles that are fully compatible with mapbox-gl.
+  // Vector styles use maptiler:// protocol which standard mapbox-gl cannot parse.
+  const MAPTILER_STYLE_IDS: Record<string, string> = {
+    'streets-light': 'streets-v2',
+    'streets-dark': 'streets-v2-dark',
+    'outdoor-light': 'outdoor-v2',
+    'outdoor-dark': 'outdoor-v2-dark',
+    'bright-light': 'bright-v2',
+    'bright-dark': 'bright-v2-dark',
+    'basic-light': 'basic-v2',
+    'basic-dark': 'basic-v2-dark',
+    'topo-light': 'topo-v2',
+    'topo-dark': 'topo-v2-dark',
+    'dataviz-light': 'dataviz',
+    'dataviz-dark': 'dataviz-dark',
+    'winter-light': 'winter-v2',
+    'winter-dark': 'winter-v2-dark',
+    hybrid: 'hybrid',
   };
   const style = (() => {
     if (provider === 'maptiler' && MAPTILER_TOKEN) {
       const styleName = dark === false ? MAP_STYLE_LIGHT : MAP_STYLE_DARK;
-      const templateUrl = MAPTILER_STYLES[styleName] || MAPTILER_STYLES['streets-light'];
-      return templateUrl + MAPTILER_TOKEN;
+      const styleId = MAPTILER_STYLE_IDS[styleName] || 'streets-v2';
+      return {
+        version: 8,
+        name: 'maptiler-raster',
+        sources: {
+          maptiler: {
+            type: 'raster',
+            tiles: [
+              `https://api.maptiler.com/maps/${styleId}/256/{z}/{x}/{y}.png?key=${MAPTILER_TOKEN}`,
+            ],
+            tileSize: 256,
+            attribution: '\u00a9 MapTiler \u00a9 OpenStreetMap contributors',
+          },
+        },
+        layers: [
+          {
+            id: 'maptiler-raster',
+            type: 'raster',
+            source: 'maptiler',
+          },
+        ],
+      };
     }
     if (provider === 'mapbox') {
       return 'mapbox://styles/mapbox/' + (dark === false ? 'light' : 'dark') + '-v11';
@@ -308,27 +336,7 @@ export function RouteMapCanvas({
     map.on('idle', onIdle);
     map.once('styledataloading', onLoading);
     styleReadyRef.current = false;
-    // MapTiler styles contain maptiler:// protocol sources incompatible
-    // with standard mapbox-gl. Always fetch JSON ourselves, strip bad sources.
-    if (provider === 'maptiler' && style.startsWith('https://')) {
-      fetch(style)
-        .then((r) => r.json())
-        .then((json) => {
-          if (json.sources) {
-            const bad = Object.keys(json.sources).filter(
-              (k) => json.sources[k].url && String(json.sources[k].url).startsWith('maptiler://')
-            );
-            for (const k of bad) delete json.sources[k];
-            if (json.layers && bad.length) {
-              json.layers = json.layers.filter((l: Record<string, string>) => !bad.includes(l.source));
-            }
-          }
-          map.setStyle(json, { diff: false, localFontFamily: undefined, localIdeographFontFamily: 'sans-serif' });
-        })
-        .catch(() => setStatus('error'));
-    } else {
-      map.setStyle(style, { diff: false, localFontFamily: undefined, localIdeographFontFamily: 'sans-serif' });
-    }
+    map.setStyle(style, { diff: false, localFontFamily: undefined, localIdeographFontFamily: 'sans-serif' });
     const timer = window.setTimeout(() => {
       if (!map.isStyleLoaded()) setStatus('error');
     }, 15000);

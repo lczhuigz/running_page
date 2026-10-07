@@ -1,0 +1,51 @@
+.container {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border: 1px solid var(--color-run-row-hover-background);
+  border-radius: 12px;
+  background: var(--color-background);
+}
+
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.toggle {
+  border-radius: 9999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 1.5px solid;
+  background: transparent;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  opacity: 0.8;
+}
+
+.toggleActive {
+  color: #fff !important;
+}
+
+.toggleActive:hover {
+  opacity: 0.85;
+}
+
+.chartWrapper {
+  width: 100%;
+}
+
+.emptyState {
+  padding: 3rem 0;
+  text-align: center;
+  color: var(--color-run-table-thead);
+  font-size: 0.875rem;
+  border: 1px solid var(--color-run-row-hover-background);
+  border-radius: 12px;
+}

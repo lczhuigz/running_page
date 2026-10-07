@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import * as polyline from '@mapbox/polyline';
+import { ReactComponent as EndSvg } from '@assets/end.svg';
+import { ReactComponent as StartSvg } from '@assets/start.svg';
 import type { Activity } from '../types';
 import { hasRoute, routeForActivity } from '../core/routeFallback';
 import { MAPBOX_TOKEN } from '../config';
@@ -37,6 +41,8 @@ export function RouteMapCanvas({
   const panelRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markerRootsRef = useRef<Root[]>([]);
   const styleReadyRef = useRef(false);
   const cameraRef = useRef<mapboxgl.CameraOptions | null>(null);
   const fittedRef = useRef<unknown>(null);
@@ -49,6 +55,47 @@ export function RouteMapCanvas({
     provider === 'mapbox'
       ? `mapbox://styles/mapbox/${dark === false ? 'light' : 'dark'}-v11`
       : `https://basemaps.cartocdn.com/gl/${dark === false ? 'positron' : 'dark-matter'}-gl-style/style.json`;
+
+  const clearMarkers = useCallback(() => {
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+    markerRootsRef.current.forEach((root) => root.unmount());
+    markerRootsRef.current = [];
+  }, []);
+
+  const createMarkerElement = useCallback((marker: typeof StartSvg) => {
+    const element = document.createElement('div');
+    element.style.width = '28px';
+    element.style.height = '28px';
+    const root = createRoot(element);
+    root.render(
+      createElement(marker, {
+        style: { width: '100%', height: '100%', display: 'block' },
+      })
+    );
+    markerRootsRef.current.push(root);
+    return element;
+  }, []);
+
+  const addStartEndMarkers = useCallback(
+    (coords: [number, number][]) => {
+      if (!mapRef.current || coords.length < 2) return;
+      clearMarkers();
+      const startEl = createMarkerElement(StartSvg);
+      markersRef.current.push(
+        new mapboxgl.Marker({ element: startEl })
+          .setLngLat(coords[0])
+          .addTo(mapRef.current)
+      );
+      const endEl = createMarkerElement(EndSvg);
+      markersRef.current.push(
+        new mapboxgl.Marker({ element: endEl })
+          .setLngLat(coords[coords.length - 1])
+          .addTo(mapRef.current)
+      );
+    },
+    [clearMarkers, createMarkerElement]
+  );
 
   const displayActivity = useMemo(
     () =>
@@ -147,11 +194,22 @@ export function RouteMapCanvas({
     }
     map.setPaintProperty('routes', 'line-width', selectedActivity ? 3.5 : 2);
     map.setPaintProperty('routes', 'line-opacity', selectedActivity ? 1 : 0.7);
+    clearMarkers();
+    if (selectedActivity && displayActivity && routes.length > 0) {
+      addStartEndMarkers(routes[0].geometry.coordinates as [number, number][]);
+    }
     if (fittedRef.current !== routes) {
       fittedRef.current = routes;
       fitRoutes();
     }
-  }, [routes, selectedActivity, fitRoutes]);
+  }, [
+    routes,
+    selectedActivity,
+    displayActivity,
+    fitRoutes,
+    clearMarkers,
+    addStartEndMarkers,
+  ]);
 
   useEffect(() => {
     if (!containerRef.current || !panelRef.current) return;
@@ -195,10 +253,11 @@ export function RouteMapCanvas({
         pitch: map.getPitch(),
       };
       observer.disconnect();
+      clearMarkers();
       map.remove();
       mapRef.current = null;
     };
-  }, [zh]);
+  }, [zh, clearMarkers]);
 
   useEffect(() => {
     const map = mapRef.current;

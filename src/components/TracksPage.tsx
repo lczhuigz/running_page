@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
 import * as polyline from '@mapbox/polyline';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import type { Activity } from '../types';
 import {
   getAvailableYears,
@@ -11,8 +9,7 @@ import {
   formatPace,
 } from '../hooks/useActivities';
 import { useLocale } from '../hooks/useLocale';
-import { getMapStyle, getMapAccessToken } from '../core/mapTiles';
-import { DEFAULT_LOCALE } from '../core/config';
+import { RouteMap } from './RouteMap';
 
 type SportType =
   'Run' | 'Ride' | 'Hike' | 'Hiking' | 'Walk' | 'Walking' | 'Swim' | 'Swimming';
@@ -91,165 +88,6 @@ function TrackThumb({
       </svg>
     </div>
   );
-}
-
-function TrackMap({
-  activity,
-  activities,
-  dark,
-}: {
-  activity: Activity | null;
-  activities: Activity[];
-  dark?: boolean;
-}) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const mapReady = useRef(false);
-  const activityRef = useRef(activity);
-  const activitiesRef = useRef(activities);
-  const style = getMapStyle(dark !== false);
-
-  // Keep the latest props in refs via an effect (not during render) so the
-  // stable updateRoutes callback below can read them at event time. This is
-  // the React-recommended alternative to writing ref.current during render
-  // (react-hooks/refs).
-  useEffect(() => {
-    activityRef.current = activity;
-    activitiesRef.current = activities;
-  });
-
-  // Stable callback ref — always reads latest data from refs
-  const updateRoutes = useRef(() => {
-    const m = map.current;
-    if (!m || !mapReady.current) return;
-    const act = activityRef.current;
-    const acts = activitiesRef.current;
-    ['selected', 'all-routes'].forEach((id) => {
-      if (m.getLayer(id)) m.removeLayer(id);
-      if (m.getSource(id)) m.removeSource(id);
-    });
-    if (act?.summary_polyline) {
-      const coords = polyline
-        .decode(act.summary_polyline)
-        .map(([lat, lng]) => [lng, lat]);
-      m.addSource('selected', {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: { type: 'LineString', coordinates: coords },
-        },
-      });
-      m.addLayer({
-        id: 'selected',
-        type: 'line',
-        source: 'selected',
-        paint: {
-          'line-color': getColor(act),
-          'line-width': 3,
-          'line-opacity': 0.9,
-        },
-      });
-      const bounds = new mapboxgl.LngLatBounds();
-      coords.forEach((c) => bounds.extend(c as [number, number]));
-      m.fitBounds(bounds, { padding: 50, maxZoom: 14 });
-      return;
-    }
-    const features = acts
-      .filter((a) => a.summary_polyline)
-      .map((a) => ({
-        type: 'Feature' as const,
-        properties: { type: a.type },
-        geometry: {
-          type: 'LineString' as const,
-          coordinates: polyline
-            .decode(a.summary_polyline!)
-            .map(([lat, lng]) => [lng, lat]),
-        },
-      }));
-    if (!features.length) return;
-    m.addSource('all-routes', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features },
-    });
-    m.addLayer({
-      id: 'all-routes',
-      type: 'line',
-      source: 'all-routes',
-      paint: {
-        'line-color': [
-          'match',
-          ['get', 'type'],
-          'Run',
-          '#f97316',
-          'Ride',
-          '#3b82f6',
-          'Hike',
-          '#22c55e',
-          '#a855f7',
-        ],
-        'line-width': 1.2,
-        'line-opacity': 0.5,
-      },
-    });
-    const allCoords = features.flatMap(
-      (f) => f.geometry.coordinates as [number, number][]
-    );
-    if (!allCoords.length) return;
-    const lngs = allCoords.map((c) => c[0]).sort((a, b) => a - b);
-    const lats = allCoords.map((c) => c[1]).sort((a, b) => a - b);
-    const t = Math.floor(lngs.length * 0.1);
-    m.fitBounds(
-      new mapboxgl.LngLatBounds(
-        [lngs[t], lats[t]],
-        [lngs[lngs.length - 1 - t], lats[lats.length - 1 - t]]
-      ),
-      { padding: 30, maxZoom: 13 }
-    );
-  });
-
-  // Init map once
-  useEffect(() => {
-    if (!mapContainer.current) return;
-    if (map.current) {
-      map.current.setStyle(style);
-      return;
-    }
-    const token = getMapAccessToken();
-    mapboxgl.accessToken = token || 'pk.placeholder';
-    mapReady.current = false;
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style,
-      center: [108, 35],
-      zoom: 3,
-      language: DEFAULT_LOCALE === 'zh' ? 'zh' : 'en',
-    });
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-    map.current.on('style.load', () => {
-      mapReady.current = true;
-      setTimeout(() => {
-        try {
-          map.current?.setLanguage('zh');
-        } catch {
-          /* ignore */
-        }
-      }, 500);
-      updateRoutes.current();
-    });
-    return () => {
-      map.current?.remove();
-      map.current = null;
-      mapReady.current = false;
-    };
-  }, [dark]);
-
-  // Re-render routes when selection or data changes
-  useEffect(() => {
-    if (mapReady.current) updateRoutes.current();
-  }, [activity, activities]);
-
-  return <div ref={mapContainer} className="h-full w-full" />;
 }
 
 function getColor(a: Activity): string {
@@ -606,14 +444,16 @@ export function TracksPage({
           )}
 
           {/* Map */}
-          <div
-            className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]"
-            style={{ height: 260 }}
-          >
-            <TrackMap
-              activity={selectedActivity}
+          <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+            <RouteMap
               activities={withPolyline}
+              allActivities={activities}
+              selectedActivity={selectedActivity}
               dark={dark}
+              onClearSelection={() => {
+                setSelectedActivity(null);
+                onSelectActivity?.(null);
+              }}
             />
           </div>
         </div>

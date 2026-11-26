@@ -15,10 +15,10 @@ repo_url: 'https://github.com/lczhuigz/running_page'
 
 # 导航链接
 nav_links:
-  - name: 'Blog'
-    url: 'https://blog.lczhuigz.cn'
+  - name: 'HomePage'
+    url: 'https://me.lczhuigz.cn'
   - name: 'About'
-    url: 'https://blog.lczhuigz.cn/about'
+    url: 'https://me.lczhuigz.cn/about'
 
 # ── 地图 ─────────────────────────────────────────────────────────────────────
 # 地图提供商: maptiler | mapbox | openfreemap
